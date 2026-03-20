@@ -58,6 +58,9 @@ Open: `http://localhost:5173`
 
 - `GET /health` service + provider status
 - `POST /api/research` run orchestrated research
+- `POST /api/research/persona` persona-driven briefing with inline citations and optional voice output
+- `POST /api/research/challenge` challenge a specific source from retrieved evidence
+- `POST /api/research/debate` two-voice pro/con debate with arbitration
 - `POST /api/research/stream` stream research progress + final result (SSE)
 - `POST /api/stt` speech-to-text (or direct transcript passthrough)
 - `POST /api/vad` voice-activity detection on WAV payload
@@ -105,4 +108,8 @@ pytest -q
 - Multi-hop planning now expands queries adaptively from discovered keywords.
 - Credibility scoring combines authority, recency, and citation signals.
 - Contradiction checker flags potentially conflicting claims across sources.
+- Live debate mode generates pro/con voice turns with contradiction arbitration.
+- Persona mode supports analyst/skeptic/journalist/policy-advisor switching.
+- Source-grounded speech uses inline citations and supports source challenge prompts.
+- Continuity mode can bring prior memory context into current spoken briefings.
 - `STRICT_PROVIDER_MODE=true` enforces Firecrawl + configured synthesizer before processing.

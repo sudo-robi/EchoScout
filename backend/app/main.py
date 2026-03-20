@@ -9,8 +9,22 @@ from fastapi.responses import StreamingResponse
 
 from app.config import settings
 from app.memory.pinecone_memory import PineconeMemory
-from app.models import ResearchRequest, ResearchResponse, STTResponse, TTSRequest, TTSResponse, VADResponse
+from app.models import (
+    DebateRequest,
+    DebateResponse,
+    PersonaResearchRequest,
+    PersonaResearchResponse,
+    ResearchRequest,
+    ResearchResponse,
+    SourceChallengeRequest,
+    SourceChallengeResponse,
+    STTResponse,
+    TTSRequest,
+    TTSResponse,
+    VADResponse,
+)
 from app.pipeline.orchestrator import ResearchOrchestrator
+from app.pipeline.showcase import ResearchShowcase
 from app.providers.elevenagents_client import ElevenAgentsClient
 from app.providers.elevenlabs_client import ElevenLabsClient
 from app.providers.firecrawl_client import FirecrawlClient
@@ -58,6 +72,11 @@ orchestrator = ResearchOrchestrator(
     synthesis_client=synthesis_router,
     memory_client=memory_client,
 )
+showcase = ResearchShowcase(
+    orchestrator=orchestrator,
+    memory_client=memory_client,
+    tts_client=elevenlabs_client,
+)
 stt_service = STTService(
     openai_api_key=settings.openai_api_key,
     openai_base_url=settings.openai_base_url,
@@ -103,6 +122,46 @@ async def research(payload: ResearchRequest) -> ResearchResponse:
         contradictions=result.get("contradictions", []),
         research_trace=result.get("research_trace", []),
     )
+
+
+@app.post("/api/research/persona", response_model=PersonaResearchResponse)
+async def research_persona(payload: PersonaResearchRequest) -> PersonaResearchResponse:
+    result = await showcase.persona_mode(
+        query=payload.query,
+        max_sources=payload.max_sources,
+        max_hops=payload.max_hops,
+        persona=payload.persona,
+        continue_from_memory=payload.continue_from_memory,
+        challenge_source_url=payload.challenge_source_url,
+        include_audio=payload.include_audio,
+        voice_id=payload.voice_id,
+    )
+    return PersonaResearchResponse(**result)
+
+
+@app.post("/api/research/challenge", response_model=SourceChallengeResponse)
+async def research_challenge(payload: SourceChallengeRequest) -> SourceChallengeResponse:
+    result = await showcase.challenge_source(
+        query=payload.query,
+        max_sources=payload.max_sources,
+        max_hops=payload.max_hops,
+        source_url=payload.source_url,
+    )
+    return SourceChallengeResponse(**result)
+
+
+@app.post("/api/research/debate", response_model=DebateResponse)
+async def research_debate(payload: DebateRequest) -> DebateResponse:
+    result = await showcase.debate_mode(
+        query=payload.query,
+        proposition=payload.proposition,
+        max_sources=payload.max_sources,
+        max_hops=payload.max_hops,
+        include_audio=payload.include_audio,
+        pro_voice_id=payload.pro_voice_id,
+        con_voice_id=payload.con_voice_id,
+    )
+    return DebateResponse(**result)
 
 
 @app.post("/api/research/stream")

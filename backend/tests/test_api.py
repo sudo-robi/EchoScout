@@ -70,3 +70,49 @@ def test_vad_endpoint_accepts_wav():
     body = response.json()
     assert "speech_detected" in body
     assert "speech_ratio" in body
+
+
+def test_research_persona_endpoint():
+    payload = {
+        "query": "state of small language models",
+        "max_sources": 3,
+        "max_hops": 1,
+        "persona": "journalist",
+        "continue_from_memory": False,
+    }
+    response = client.post("/api/research/persona", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["persona"] == "journalist"
+    assert "spoken_script" in body
+    assert "citations" in body
+
+
+def test_research_challenge_endpoint():
+    payload = {
+        "query": "ai regulation updates",
+        "max_sources": 3,
+        "max_hops": 1,
+        "source_url": "https://example.com/nonexistent",
+    }
+    response = client.post("/api/research/challenge", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_url"] == payload["source_url"]
+    assert "response" in body
+
+
+def test_research_debate_endpoint():
+    payload = {
+        "query": "do ai copilots improve developer productivity",
+        "max_sources": 3,
+        "max_hops": 1,
+        "proposition": "AI copilots substantially improve productivity.",
+        "include_audio": False,
+    }
+    response = client.post("/api/research/debate", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["proposition"] == payload["proposition"]
+    assert len(body["turns"]) == 2
+    assert "arbitration" in body

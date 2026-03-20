@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 
 
 class ResearchRequest(BaseModel):
@@ -44,3 +45,62 @@ class VADResponse(BaseModel):
     speech_detected: bool
     speech_ratio: float
     threshold: float
+
+
+class PersonaResearchRequest(ResearchRequest):
+    persona: Literal["analyst", "skeptic", "journalist", "policy_advisor"] = "analyst"
+    continue_from_memory: bool = False
+    challenge_source_url: str | None = None
+    include_audio: bool = False
+    voice_id: str | None = None
+
+
+class PersonaResearchResponse(BaseModel):
+    query: str
+    persona: str
+    spoken_script: str
+    summary: str
+    key_points: list[str]
+    citations: list[SourceItem]
+    continuity_notes: list[str] = []
+    challenge_response: str | None = None
+    audio_base64: str | None = None
+    mime_type: str = "audio/mpeg"
+    warnings: list[str] = []
+    research_trace: list[str] = []
+
+
+class SourceChallengeRequest(ResearchRequest):
+    source_url: str = Field(..., min_length=5)
+
+
+class SourceChallengeResponse(BaseModel):
+    source_url: str
+    challenge_prompt: str
+    response: str
+    citations: list[SourceItem]
+    warnings: list[str] = []
+
+
+class DebateRequest(ResearchRequest):
+    proposition: str | None = None
+    include_audio: bool = False
+    pro_voice_id: str | None = None
+    con_voice_id: str | None = None
+
+
+class DebateTurn(BaseModel):
+    speaker: str
+    stance: Literal["pro", "con"]
+    text: str
+    citations: list[SourceItem]
+    audio_base64: str | None = None
+
+
+class DebateResponse(BaseModel):
+    proposition: str
+    turns: list[DebateTurn]
+    arbitration: str
+    contradictions: list[str] = []
+    warnings: list[str] = []
+    research_trace: list[str] = []
