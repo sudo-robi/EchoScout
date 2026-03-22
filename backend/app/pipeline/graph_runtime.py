@@ -28,18 +28,24 @@ STOPWORDS = {
 
 
 class AgentGraphRuntime:
-    def __init__(self, firecrawl_client, synthesis_client, memory_client=None):
+    def __init__(self, firecrawl_client, synthesis_client, memory_client=None, tavily_client=None):
         self.firecrawl_client = firecrawl_client
         self.synthesis_client = synthesis_client
         self.memory_client = memory_client
+        self.tavily_client = tavily_client
 
     async def execute(self, query: str, max_sources: int, max_hops: int) -> dict:
         trace: list[str] = ["planner:initialized"]
         warnings: list[str] = []
         planned_queries = [query.strip()]
 
-        if not self.firecrawl_client.configured:
-            warnings.append("FIRECRAWL_API_KEY is missing; web research cannot run")
+        has_firecrawl = self.firecrawl_client.configured
+        has_tavily = self.tavily_client is not None and self.tavily_client.configured
+
+        if not has_firecrawl and not has_tavily:
+            warnings.append("No search provider configured; web research cannot run")
+        elif not has_firecrawl:
+            warnings.append("FIRECRAWL_API_KEY is missing; using Tavily only")
 
         memory_context = []
         if self.memory_client is not None:
@@ -55,13 +61,36 @@ class AgentGraphRuntime:
             hop_queries = planned_queries[-2:] if hop > 0 else planned_queries[:1]
 
             for planned in hop_queries:
-                search_hits = await self.firecrawl_client.search(planned, limit=max_sources)
+                # Run Firecrawl and Tavily searches concurrently
+                search_tasks = []
+                if has_firecrawl:
+                    search_tasks.append(self.firecrawl_client.search(planned, limit=max_sources))
+                if has_tavily:
+                    search_tasks.append(self.tavily_client.search(planned, limit=max_sources))
+
+                all_search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+                # Merge and deduplicate search hits by URL
+                search_hits: list[dict] = []
+                search_hit_urls: set[str] = set()
+                for result in all_search_results:
+                    if isinstance(result, Exception):
+                        continue
+                    for hit in result:
+                        url = hit.get("url", "")
+                        if url and url not in search_hit_urls:
+                            search_hit_urls.add(url)
+                            search_hits.append(hit)
+
                 trace.append(f"crawler:search:{planned}")
                 if not search_hits:
                     continue
 
                 scrape_tasks = [self.firecrawl_client.scrape(item["url"]) for item in search_hits if item.get("url")]
-                scrape_results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
+                if has_firecrawl:
+                    scrape_results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
+                else:
+                    scrape_results = [Exception("no scraper")] * len(scrape_tasks)
 
                 for hit, scraped in zip(search_hits, scrape_results):
                     url = hit.get("url", "")

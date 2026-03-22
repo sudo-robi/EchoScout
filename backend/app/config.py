@@ -12,6 +12,9 @@ class Settings:
     firecrawl_api_key: str | None = os.getenv("FIRECRAWL_API_KEY")
     firecrawl_base_url: str = os.getenv("FIRECRAWL_BASE_URL", "https://api.firecrawl.dev/v1")
 
+    tavily_api_key: str | None = os.getenv("TAVILY_API_KEY")
+    tavily_search_depth: str = os.getenv("TAVILY_SEARCH_DEPTH", "basic")
+
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")

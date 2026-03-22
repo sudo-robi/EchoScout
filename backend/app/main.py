@@ -29,6 +29,7 @@ from app.providers.elevenagents_client import ElevenAgentsClient
 from app.providers.elevenlabs_client import ElevenLabsClient
 from app.providers.firecrawl_client import FirecrawlClient
 from app.providers.llm_client import LLMClient
+from app.providers.tavily_client import TavilyClient
 from app.providers.stt_service import STTService
 from app.providers.synthesis_router import SynthesisRouter
 from app.providers.vad_service import VADService
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 
 firecrawl_client = FirecrawlClient(api_key=settings.firecrawl_api_key, base_url=settings.firecrawl_base_url)
+tavily_client = TavilyClient(api_key=settings.tavily_api_key, search_depth=settings.tavily_search_depth)
 llm_client = LLMClient(api_key=settings.openai_api_key, base_url=settings.openai_base_url, model=settings.openai_model)
 elevenagents_client = ElevenAgentsClient(
     api_key=settings.elevenagents_api_key,
@@ -71,6 +73,7 @@ orchestrator = ResearchOrchestrator(
     firecrawl_client=firecrawl_client,
     synthesis_client=synthesis_router,
     memory_client=memory_client,
+    tavily_client=tavily_client,
 )
 showcase = ResearchShowcase(
     orchestrator=orchestrator,
@@ -90,6 +93,7 @@ async def health() -> dict:
     return {
         "ok": True,
         "firecrawl_configured": firecrawl_client.configured,
+        "tavily_configured": tavily_client.configured,
         "elevenagents_configured": elevenagents_client.configured,
         "llm_configured": llm_client.configured,
         "tts_configured": elevenlabs_client.configured,
