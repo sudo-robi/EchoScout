@@ -37,7 +37,7 @@ class TavilyClient:
             )
         return normalized
 
-    async def extract(self, urls: list[str]) -> list[dict]:
+    async def extract(self, urls: list[str]) -> list[dict]:  # noqa: Future hook for Firecrawl scrape fallback
         if not self.configured or self._client is None:
             return []
 

@@ -86,11 +86,14 @@ class AgentGraphRuntime:
                 if not search_hits:
                     continue
 
-                scrape_tasks = [self.firecrawl_client.scrape(item["url"]) for item in search_hits if item.get("url")]
                 if has_firecrawl:
+                    scrape_tasks = [
+                        self.firecrawl_client.scrape(item["url"])
+                        for item in search_hits if item.get("url")
+                    ]
                     scrape_results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
                 else:
-                    scrape_results = [Exception("no scraper")] * len(scrape_tasks)
+                    scrape_results = [Exception("no scraper")] * len(search_hits)
 
                 for hit, scraped in zip(search_hits, scrape_results):
                     url = hit.get("url", "")

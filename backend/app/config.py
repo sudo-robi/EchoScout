@@ -39,3 +39,6 @@ class Settings:
 
 
 settings = Settings()
+
+assert settings.tavily_search_depth in ("basic", "advanced"), \
+    "TAVILY_SEARCH_DEPTH must be 'basic' or 'advanced'"
