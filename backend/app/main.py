@@ -29,6 +29,7 @@ from app.providers.elevenagents_client import ElevenAgentsClient
 from app.providers.elevenlabs_client import ElevenLabsClient
 from app.providers.firecrawl_client import FirecrawlClient
 from app.providers.llm_client import LLMClient
+from app.providers.tavily_client import TavilyClient
 from app.providers.stt_service import STTService
 from app.providers.synthesis_router import SynthesisRouter
 from app.providers.vad_service import VADService
@@ -43,6 +44,8 @@ app.add_middleware(
 )
 
 firecrawl_client = FirecrawlClient(api_key=settings.firecrawl_api_key, base_url=settings.firecrawl_base_url)
+tavily_client = TavilyClient(api_key=settings.tavily_api_key)
+search_client = tavily_client if settings.search_provider == "tavily" else firecrawl_client
 llm_client = LLMClient(api_key=settings.openai_api_key, base_url=settings.openai_base_url, model=settings.openai_model)
 elevenagents_client = ElevenAgentsClient(
     api_key=settings.elevenagents_api_key,
@@ -68,7 +71,7 @@ memory_client = PineconeMemory(
     openai_base_url=settings.openai_base_url,
 )
 orchestrator = ResearchOrchestrator(
-    firecrawl_client=firecrawl_client,
+    firecrawl_client=search_client,
     synthesis_client=synthesis_router,
     memory_client=memory_client,
 )
@@ -89,7 +92,9 @@ vad_service = VADService()
 async def health() -> dict:
     return {
         "ok": True,
+        "search_provider": settings.search_provider,
         "firecrawl_configured": firecrawl_client.configured,
+        "tavily_configured": tavily_client.configured,
         "elevenagents_configured": elevenagents_client.configured,
         "llm_configured": llm_client.configured,
         "tts_configured": elevenlabs_client.configured,
@@ -102,8 +107,9 @@ async def health() -> dict:
 @app.post("/api/research", response_model=ResearchResponse)
 async def research(payload: ResearchRequest) -> ResearchResponse:
     if settings.strict_provider_mode:
-        if not firecrawl_client.configured:
-            raise HTTPException(status_code=400, detail="STRICT_PROVIDER_MODE requires FIRECRAWL_API_KEY")
+        if not search_client.configured:
+            provider_key = "TAVILY_API_KEY" if settings.search_provider == "tavily" else "FIRECRAWL_API_KEY"
+            raise HTTPException(status_code=400, detail=f"STRICT_PROVIDER_MODE requires {provider_key}")
         if settings.research_synth_provider == "elevenagents" and not elevenagents_client.configured:
             raise HTTPException(status_code=400, detail="STRICT_PROVIDER_MODE requires ELEVENAGENTS_API_KEY and ELEVENAGENTS_AGENT_ID")
 
